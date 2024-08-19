@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Talents Stories Group</title>
+    <style>
+        /* Basic styling */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .post, .comment, .message, .group, .page {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #fafafa;
+        }
+        .like, .comment-button {
+            margin-right: 10px;
+            cursor: pointer;
+            color: #007BFF;
+        }
+        .like.active {
+            color: #FF0000;
+        }
+        .follower-button {
+            cursor: pointer;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>New Talents Stories Group</h1>
+    
+    <!-- Registration & Login Forms -->
+    <div id="registrationSection">
+        <h2>Register</h2>
+        <input type="text" id="fullName" placeholder="Full Name"><br>
+        <input type="date" id="dob" placeholder="Date of Birth"><br>
+        <input type="text" id="phone" placeholder="Telephone Number"><br>
+        <input type="email" id="email" placeholder="Email"><br>
+        <input type="file" id="photoUpload" accept="image/*"><br>
+        <input type="password" id="password" placeholder="Password (8 characters)"><br>
+        <button onclick="register()">Register</button>
+    </div>
+
+    <div id="loginSection">
+        <h2>Login</h2>
+        <input type="text" id="loginPhone" placeholder="Telephone Number"><br>
+        <input type="password" id="loginPassword" placeholder="Password"><br>
+        <button onclick="login()">Login</button>
+    </div>
+
+    <!-- Main Menu Section -->
+    <div id="menuSection" style="display: none;">
+        <h2>Welcome, <span id="profileName"></span></h2>
+        <img id="profilePhoto" src="" alt="Profile Photo" width="100"><br>
+        <button onclick="editProfile()">Edit Profile</button>
+        <button onclick="changePhoto()">Change Profile Photo</button>
+        <p>Followers: <span id="profileFollowers">0</span></p>
+        <p>Points: <span id="profilePoints">0</span></p>
+        <button onclick="logout()">Logout</button>
+
+        <!-- Post Section -->
+        <div id="postsSection">
+            <h3>Your Posts</h3>
+            <input type="text" id="postContent" placeholder="What's on your mind?"><br>
+            <button onclick="createPost()">Post</button>
+            <div id="postsList"></div>
+        </div>
+
+        <!-- Group Section -->
+        <div id="groupsSection">
+            <h3>Your Groups</h3>
+            <input type="text" id="groupName" placeholder="Create a new group"><br>
+            <button onclick="createGroup()">Create Group</button>
+            <div id="groupsList"></div>
+        </div>
+
+        <!-- Page Section -->
+        <div id="pagesSection">
+            <h3>Your Pages</h3>
+            <input type="text" id="pageName" placeholder="Create a new page"><br>
+            <button onclick="createPage()">Create Page</button>
+            <div id="pagesList"></div>
+        </div>
+
+        <!-- Messaging Section -->
+        <div id="messagesSection">
+            <h3>Messages</h3>
+            <select id="friendSelect"></select><br>
+            <textarea id="messageContent" placeholder="Write a message"></textarea><br>
+            <button onclick="sendMessage()">Send Message</button>
+            <div id="messagesList"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let users = [];
+    let loggedInUser = null;
+
+    function register() {
+        const fullName = document.getElementById('fullName').value;
+        const dob = document.getElementById('dob').value;
+        const phone = document.getElementById('phone').value;
+        const email = document.getElementById('email').value;
+        const photo = document.getElementById('photoUpload').files[0];
+        const password = document.getElementById('password').value;
+
+        if (fullName && dob && phone && email && photo && password.length >= 8) {
+            const reader = new FileReader();
+            reader.onload = function() {
+                const user = {
+                    fullName,
+                    dob,
+                    phone,
+                    email,
+                    photo: reader.result,
+                    password,
+                    posts: [],
+                    groups: [],
+                    pages: [],
+                    messages: [],
+                    followers: 0,
+                    points: 0,
+                    likedPosts: [],
+                    following: []
+                };
+                users.push(user);
+                alert('Registration successful!');
+                document.getElementById('registrationSection').style.display = 'none';
+                document.getElementById('loginSection').style.display = 'block';
+            };
+            reader.readAsDataURL(photo);
+        } else {
+            alert('Please fill all fields correctly.');
+        }
+    }
+
+    function login() {
+        const phone = document.getElementById('loginPhone').value;
+        const password = document.getElementById('loginPassword').value;
+
+        const user = users.find(u => u.phone === phone && u.password === password);
+        if (user) {
+            loggedInUser = user;
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('menuSection').style.display = 'block';
+            updateProfile();
+            populateFriendSelect();
+            displayPosts();
+            displayGroups();
+            displayPages();
+            displayMessages();
+        } else {
+            alert('Invalid phone number or password.');
+        }
+    }
+
+    function createPost() {
+        const postContent = document.getElementById('postContent').value;
+
+        if (postContent && loggedInUser) {
+            const post = {
+                content: postContent,
+                likes: 0,
+                comments: []
+            };
+            loggedInUser.posts.push(post);
+            document.getElementById('postContent').value = '';
+            displayPosts();
+        } else {
+            alert('Please write something before posting.');
+        }
+    }
+
+    function displayPosts() {
+        const postsContainer = document.getElementById('postsList');
+        postsContainer.innerHTML = '';
+
+        if (loggedInUser && loggedInUser.posts.length > 0) {
+            loggedInUser.posts.forEach((post, index) => {
+                const postElement = document.createElement('div');
+                postElement.classList.add('post');
+                postElement.innerHTML = `
+                    <p>${post.content}</p>
+                    <span class="like ${post.likes > 0 ? 'active' : ''}" onclick="likePost(${index})">Like (${post.likes})</span>
+                    <span class="comment-button" onclick="showComments(${index})">Comment</span>
+                    <div id="comments-${index}" style="display: none;">
+                        <input type="text" id="comment-input-${index}" placeholder="Write a comment"><br>
+                        <button onclick="addComment(${index})">Comment</button>
+                        <div id="comments-list-${index}"></div>
+                    </div>
+                `;
+                postsContainer.appendChild(postElement);
+                displayComments(index);
+            });
+        } else {
+            postsContainer.innerHTML = '<p>No posts yet. Write something to share with others!</p>';
+        }
+    }
+
+    function likePost(postIndex) {
+        const post = loggedInUser.posts[postIndex];
+        if (!loggedInUser.likedPosts.includes(postIndex)) {
+            post.likes += 1;
+            loggedInUser.likedPosts.push(postIndex);
+        } else {
+            post.likes -= 1;
+            loggedInUser.likedPosts = loggedInUser.likedPosts.filter(index => index !== postIndex);
+        }
+        displayPosts();
+    }
+
+    function showComments(postIndex) {
+        const commentsSection = document.getElementById(`comments-${postIndex}`);
+        commentsSection.style.display = commentsSection.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function addComment(postIndex) {
+        const commentInput = document.getElementById(`comment-input-${postIndex}`);
+        const commentContent = commentInput.value;
+
+        if (commentContent) {
+            loggedInUser.posts[postIndex].comments.push({ content: commentContent });
+            commentInput.value = '';
+            displayComments(postIndex);
+        }
+    }
+
+function displayComments(postIndex) {
+        const commentsList = document.getElementById(`comments-list-${postIndex}`);
+        commentsList.innerHTML = '';
+
+        loggedInUser.posts[postIndex].comments.forEach(comment => {
+            const commentElement = document.createElement('div');
+            commentElement.classList.add('comment');
+            commentElement.innerText = comment.content;
+            commentsList.appendChild(commentElement);
+        });
+    }
+
+    function createGroup() {
+        const groupName = document.getElementById('groupName').value;
+
+        if (groupName && loggedInUser) {
+            const group = {
+                name: groupName,
+                members: [loggedInUser.fullName]
+            };
+            loggedInUser.groups.push(group);
+            document.getElementById('groupName').value = '';
+            displayGroups();
+        } else {
+            alert('Please provide a group name.');
+        }
+    }
+
+    function displayGroups() {
+        const groupsContainer = document.getElementById('groupsList');
+        groupsContainer.innerHTML = '';
+
+        if (loggedInUser && loggedInUser.groups.length > 0) {
+            loggedInUser.groups.forEach((group, index) => {
+                const groupElement = document.createElement('div');
+                groupElement.classList.add('group');
+                groupElement.innerHTML = `
+                    <p>Group: ${group.name}</p>
+                    <p>Members: ${group.members.join(', ')}</p>
+                    <button onclick="joinGroup(${index})">Join Group</button>
+                `;
+                groupsContainer.appendChild(groupElement);
+            });
+        } else {
+            groupsContainer.innerHTML = '<p>No groups created yet.</p>';
+        }
+    }
+
+    function joinGroup(groupIndex) {
+        const group = loggedInUser.groups[groupIndex];
+        if (!group.members.includes(loggedInUser.fullName)) {
+            group.members.push(loggedInUser.fullName);
+            displayGroups();
+        } else {
+            alert('You are already a member of this group.');
+        }
+    }
+
+    function createPage() {
+        const pageName = document.getElementById('pageName').value;
+
+        if (pageName && loggedInUser) {
+            const page = {
+                name: pageName,
+                followers: 0,
+                posts: []
+            };
+            loggedInUser.pages.push(page);
+            document.getElementById('pageName').value = '';
+            displayPages();
+        } else {
+            alert('Please provide a page name.');
+        }
+    }
+
+    function displayPages() {
+        const pagesContainer = document.getElementById('pagesList');
+        pagesContainer.innerHTML = '';
+
+        if (loggedInUser && loggedInUser.pages.length > 0) {
+            loggedInUser.pages.forEach((page, index) => {
+                const pageElement = document.createElement('div');
+                pageElement.classList.add('page');
+                pageElement.innerHTML = `
+                    <p>Page: ${page.name}</p>
+                    <p>Followers: ${page.followers}</p>
+                    <button onclick="followPage(${index})">Follow Page</button>
+                `;
+                pagesContainer.appendChild(pageElement);
+            });
+        } else {
+            pagesContainer.innerHTML = '<p>No pages created yet.</p>';
+        }
+    }
+
+    function followPage(pageIndex) {
+        const page = loggedInUser.pages[pageIndex];
+        page.followers += 1;
+        loggedInUser.points += 5;
+        displayPages();
+        updateProfile();
+    }
+
+    function sendMessage() {
+        const friendSelect = document.getElementById('friendSelect');
+        const messageContent = document.getElementById('messageContent').value;
+
+        if (messageContent && loggedInUser) {
+            const friendName = friendSelect.value;
+            const friend = users.find(u => u.fullName === friendName);
+
+            if (friend) {
+                const message = {
+                    sender: loggedInUser.fullName,
+                    content: messageContent
+                };
+                friend.messages.push(message);
+                document.getElementById('messageContent').value = '';
+                displayMessages();
+            } else {
+                alert('Friend not found.');
+            }
+        } else {
+            alert('Please write a message.');
+        }
+    }
+
+    function displayMessages() {
+        const messagesContainer = document.getElementById('messagesList');
+        messagesContainer.innerHTML = '';
+
+        if (loggedInUser && loggedInUser.messages.length > 0) {
+            loggedInUser.messages.forEach(message => {
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message');
+                messageElement.innerHTML = `<p><strong>${message.sender}:</strong> ${message.content}</p>`;
+                messagesContainer.appendChild(messageElement);
+            });
+        } else {
+            messagesContainer.innerHTML = '<p>No messages yet.</p>';
+        }
+    }
+
+    function editProfile() {
+        const newFullName = prompt('Enter your new full name:', loggedInUser.fullName);
+        if (newFullName) {
+            loggedInUser.fullName = newFullName;
+            updateProfile();
+        }
+    }
+
+    function changePhoto() {
+        const newPhoto = prompt('Enter the URL of your new profile photo:');
+        if (newPhoto) {
+            loggedInUser.photo = newPhoto;
+            updateProfile();
+        }
+    }
+
+    function updateProfile() {
+        document.getElementById('profileName').innerText = loggedInUser.fullName;
+        document.getElementById('profilePhoto').src = loggedInUser.photo;
+        document.getElementById('profileFollowers').innerText = loggedInUser.followers;
+        document.getElementById('profilePoints').innerText = loggedInUser.points;
+    }
+
+    function logout() {
+        loggedInUser = null;
+        document.getElementById('menuSection').style.display = 'none';
+        document.getElementById('loginSection').style.display = 'block';
+    }
+
+    function populateFriendSelect() {
+        const friendSelect = document.getElementById('friendSelect');
+        friendSelect.innerHTML = '';
+
+        users.forEach(user => {
+            if (user.phone !== loggedInUser.phone) {
+                const option = document.createElement('option');
+                option.value = user.fullName;
+                option.innerText = user.fullName;
+                friendSelect.appendChild(option);
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
